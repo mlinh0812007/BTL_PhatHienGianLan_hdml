@@ -1,0 +1,41 @@
+import pandas as pd
+import time
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.preprocessing import LabelEncoder
+
+print("--- BẮT ĐẦU CHẠY MÔ HÌNH LOF ---")
+
+# 1. Đọc dữ liệu và DỌN RÁC (dropna) ngay lập tức để chống lỗi NaN
+print("1. Đang tải và làm sạch dữ liệu...")
+df = pd.read_csv('financial_anomaly_data.csv').dropna()
+
+# 2. Mã hóa chữ thành số (Label Encoding)
+print("2. Đang chuẩn hóa dữ liệu chữ sang số...")
+le = LabelEncoder()
+df['TransactionType_N'] = le.fit_transform(df['TransactionType'])
+df['Location_N'] = le.fit_transform(df['Location'])
+
+# 3. Chọn 3 cột cốt lõi để AI soi
+X = df[['Amount', 'TransactionType_N', 'Location_N']]
+
+# 4. Bật AI LOF lên và bấm giờ
+print("3. Đang huấn luyện LOF... (Thuật toán này tính toán rất nặng, vui lòng chờ!)")
+thoi_gian_bat_dau = time.time()
+
+# Cấu hình: Soi 20 hàng xóm xung quanh, tìm 1% dị biệt
+mo_hinh_lof = LocalOutlierFactor(n_neighbors=20, contamination=0.01)
+df['Nhan_LOF'] = mo_hinh_lof.fit_predict(X)
+
+thoi_gian_ket_thuc = time.time()
+
+# 5. Lọc kết quả và Báo cáo
+kq_gian_lan = df[df['Nhan_LOF'] == -1]
+thoi_gian_chay = thoi_gian_ket_thuc - thoi_gian_bat_dau
+
+print("\n--- KẾT QUẢ LOF ---")
+print(f"Phát hiện được: {len(kq_gian_lan)} giao dịch gian lận.")
+print(f"Thời gian chạy: {thoi_gian_chay:.2f} giây.")
+
+# 6. Xuất ra Excel
+kq_gian_lan.to_excel('Gian_Lan_Theo_LOF.xlsx', index=False)
+print("Đã lưu kết quả vào file: Gian_Lan_Theo_LOF.xlsx")
